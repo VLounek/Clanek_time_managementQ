@@ -1,0 +1,1153 @@
+---
+title: "Clanek_time_managementQ"
+editor: visual
+project:
+  execute-dir: project
+execute: 
+  echo: false
+  cache: true
+format:
+    docx:
+        toc: true
+        toc-depth: 2
+        toc-title: Table of contents
+        number-sections: true
+        highlight-style: github
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+options(java.parameters = c("-XX:+UseConcMarkSweepGC", "-Xmx8192m"))
+ 
+library(rJava)
+library(xlsxjars)
+library(xlsx)
+library(ggplot2)
+library(factoextra)
+library(car)
+library(gvlma)
+library(readxl)
+library(vcd)
+library(lattice)
+library(dplyr)
+library(plyr)
+library(utils)
+library(foreign)
+library(survey)
+library(Hmisc)
+library(questionr)
+library(MASS)
+library(vcd)
+library(sciplot)
+library(tidyr)
+library(plotrix)
+library(psych)
+library(Publish)
+library(swirl)
+library(lsr)
+library(ggpubr)
+library(Rmisc)
+library(MultinomialCI)
+library(reshape2)
+#library(ryouready)
+library(forcats)
+library(scales)
+library(gplots)
+library(e1071)
+library(DataExplorer)
+library(gridExtra)
+library(survey)
+library(scales)
+library(RColorBrewer)
+library(corpcor)
+library(GPArotation)
+library(devtools)
+library(datapasta)
+library(DT)
+library(poliscidata)
+library(DescTools)
+library(pBrackets)
+library(condformat)
+library(kableExtra)
+library(knitr)
+library(magick)
+library(webshot)
+library(tidyverse)
+library(effsize)
+library(rcompanion)
+library(formattable)
+library(wesanderson)
+library(gmodels)
+library(nnet)
+library(mlogit)
+library(ResourceSelection)
+library(fmsb)
+library(viridisLite)
+library(grid)
+library(caTools)
+library(caret)
+library(shadowtext)
+library(cowplot)
+library(magrittr)
+library(lavaan)
+library(semPlot)
+library(rvg)
+#library(officer)
+library(here)
+library(effectsize)
+library(ordinal)
+library(VGAM)
+library(modi)
+library(ggstatsplot)
+library(mosaic)
+library(GGally)
+library(gofcat)
+library(broom)
+library(usethis)
+ 
+
+options(OutDec= ",", scipen = 100, digits = 4)
+
+page_width <- 17
+fontsize <- 8
+fontsize_div <- fontsize/ggplot2::.pt
+geom.text.size = 3
+theme.size = 10
+
+# Mame dva datove soubory: Eurostudent VII a VIII. Pouzivame aktualnejsi verzi dat, stara analyza zustava nize.
+#base <- readxl::read_excel("./data/eurostudent_data_CZ_final_data.xlsx")
+#eu <- base %>% mutate(across(.cols = everything(), ~replace(., . <= -1, NA)))
+
+# ES 8 =====
+base8 <- foreign::read.spss("./data/national_dataset_CZ_afterpartB-FIN-VAL-CAS-D_ETER-FIN.sav", to.data.frame = T)
+eu8 <- base8 %>% filter(v1_8 == "Full-time student")
+eu8$v4_5 <- as.numeric(eu8$v4_5)
+eu8$v3_2_1week <- as.numeric(eu8$v3_2_1week)
+eu8$v3_2_2week <- as.numeric(eu8$v3_2_2week)
+eu8$cas_skola <- eu8$v3_2_1week + eu8$v3_2_2week
+
+eu8 %<>% mutate(work_2cat = factor(case_when(v4_5 == 0 | is.na(v4_5) ~ "0",
+                                        v4_5 > 0 & v4_5 <= 20 ~ "do 20 hodin",
+                                        v4_5 > 20 ~ "nad 20 hodin"), levels = c("do 20 hodin", "nad 20 hodin"), ordered = F))
+
+eu8 %<>% mutate(work_4cat = factor(case_when(v4_5 > 0 & v4_5 <= 5 ~ "1-5",
+                                        v4_5 > 5 & v4_5 <= 15 ~ "6-15",
+                                        v4_5 > 15 & v4_5 <= 20 ~ "16-20",
+                                        v4_5 > 20 ~ ">20"), levels = c("1-5", "6-15", "16-20", ">20"), ordered = F))
+
+eu8 %<>% mutate(work_7cat = factor(case_when(v4_5 == 0 | is.na(v4_5) ~ "0",
+                                        v4_5 > 0 & v4_5 <= 5 ~ "1-5",
+                                        v4_5 > 5 & v4_5 <= 15 ~ "6-15",
+                                        v4_5 > 15 & v4_5 <= 20 ~ "16-20",
+                                        v4_5 > 20 & v4_5 <= 25 ~ "21-25",
+                                        v4_5 > 25 & v4_5 <= 30 ~ "26-30",
+                                        v4_5 > 30 ~ ">30"),
+                                   levels = c("0", "1-5", "6-15", "15-20", "20-25", "25-30", ">30"), ordered = F))
+
+eu8 %<>% mutate(v3_2_1week_cat = factor(case_when(v3_2_1week == 0 | is.na(v3_2_1week) ~ "0",
+                                        v3_2_1week > 0 & v3_2_1week <= 5 ~ "1-5h",
+                                        v3_2_1week > 5 & v3_2_1week <= 10 ~ "6-10h",
+                                        v3_2_1week > 10 & v3_2_1week <= 15 ~ "11-15h",
+                                        v3_2_1week > 15 & v3_2_1week <= 20 ~ "16-20h",
+                                        v3_2_1week > 20 ~ ">20h"), levels = c("0", "1-5h", "6-10h", "11-15h", "16-20h", ">20h"), ordered = F))
+
+eu8 %<>% mutate(v3_2_2week_cat = factor(case_when(v3_2_2week == 0 | is.na(v3_2_2week) ~ "0",
+                                        v3_2_2week > 0 & v3_2_2week <= 5 ~ "1-5h",
+                                        v3_2_2week > 5 & v3_2_2week <= 10 ~ "6-10h",
+                                        v3_2_2week > 10 & v3_2_2week <= 15 ~ "11-15h",
+                                        v3_2_2week > 15 & v3_2_2week <= 20 ~ "16-20h",
+                                        v3_2_2week > 20 ~ ">20h"), levels = c("0", "1-5h", "6-10h", "11-15h", "16-20h", ">20h"), ordered = F))
+
+eu8 %<>% mutate(cas_skola_cat = factor(case_when(cas_skola > 0 & cas_skola <= 10 ~ "1-10h",
+                                        cas_skola > 10 & cas_skola <= 20 ~ "11-20h",
+                                        cas_skola > 20 & cas_skola <= 30 ~ "21-30h",
+                                        cas_skola > 30 & cas_skola <= 40 ~ "31-40h",
+                                        cas_skola > 40 ~ ">40h"), levels = c("1-10h", "11-20h", "21-30h", "31-40h", ">40h"), ordered = F))
+
+eu8 <- eu8 %>% mutate(across(.cols = everything(), ~replace(., . <= -1, NA)))
+eu8 <- eu8 %>% mutate(across(c(v3_1_5, v3_1_8), ~recode(., "Strongly agree" = "1", "-" = "2", "-_duplicated_3" = "3",
+                                                        "-_duplicated_4" = "4", "Don’t agree at all" = "5")))
+eu8$v3_1_8 <- factor(eu8$v3_1_8, ordered = T)
+eu8$rizikoUkonceni <- factor(case_when(eu8$v3_1_8 == "5" | eu8$v3_1_8 == "4" ~ "Nízké",
+                                      eu8$v3_1_8 == "3" ~ "Střední",
+                                      eu8$v3_1_8 == "2" | eu8$v3_1_8 == "1" ~ "Vysoké"), ordered = T)
+
+eu8 <- eu8 %>% mutate(across(c(v3_2_1week, v3_2_2week, v4_5), ~as.numeric(.)))
+eu8 <- eu8 %>% mutate(across(c(v3_3_1, v3_3_2, v3_3_3), ~ recode(.x, "Less" = "Méně", "Same" = "Stejně", "More" = "Více")))
+eu8 <- eu8 %>% mutate(across(c("v3_2_1week", "v3_2_2week", "v4_5"), as.numeric))
+
+eu8 %<>% mutate(tm_cat1_7_1 = factor(case_when(tm1_7_1 == "All of the time" | tm1_7_1 == "-" ~ "1",
+                                               tm1_7_1 == "-_duplicated_3" ~ "2",
+                                               tm1_7_1 == "-_duplicated_4" | tm1_7_1 == "Never" ~ "3")))
+
+eu8 %<>% mutate(tm_cat1_7_2 = factor(case_when(tm1_7_2 == "All of the time" | tm1_7_2 == "-" ~ "1",
+                                               tm1_7_2 == "-_duplicated_3" ~ "2",
+                                               tm1_7_2 == "-_duplicated_4" | tm1_7_2 == "Never" ~ "3")))
+
+eu8 %<>% mutate(tm_cat1_7_3 = factor(case_when(tm1_7_3 == "All of the time" | tm1_7_3 == "-" ~ "1",
+                                               tm1_7_3 == "-_duplicated_3" ~ "2",
+                                               tm1_7_3 == "-_duplicated_4" | tm1_7_3 == "Never" ~ "3")))
+
+eu8 %<>% mutate(tm_cat1_7_4 = factor(case_when(tm1_7_4 == "All of the time" | tm1_7_4 == "-" ~ "1",
+                                               tm1_7_4 == "-_duplicated_3" ~ "2",
+                                               tm1_7_4 == "-_duplicated_4" | tm1_7_4 == "Never" ~ "3")))
+
+eu8 %<>% mutate(iz_iz = factor(case_when(tm_cat1_7_1 == "1" & tm_cat1_7_2 == "1" & tm_cat1_7_3 == "1" & tm_cat1_7_4 == "1" ~ "1",
+                                         tm_cat1_7_1 == "3" & tm_cat1_7_2 == "3" & tm_cat1_7_3 == "3" & tm_cat1_7_4 == "1" ~ "3",
+                                         is.na(tm_cat1_7_1) & is.na(tm_cat1_7_2) & is.na(tm_cat1_7_3) & is.na(tm_cat1_7_4) ~ NA_character_,
+                                         TRUE ~ "2")))
+
+# Celkovy cas (součet školy, samostudia a práce)
+eu8$celkovy_cas <- eu8$v3_2_1week + eu8$v3_2_2week + eu8$v4_5
+summary(eu8$celkovy_cas)
+
+# COMPUTE iz_iz = 2.
+# 
+# if tm_cat1_7_1 EQ -99 AND tm_cat1_7_2 EQ -99 AND tm_cat1_7_3 EQ -99 AND tm_cat1_7_4  EQ -99 iz_iz = -99.
+# 
+# if tm_cat1_7_1  EQ 1 AND  tm_cat1_7_2 EQ 1  AND tm_cat1_7_3 EQ 1 AND tm_cat1_7_4 EQ 1  iz_iz = 1.
+# 
+# if tm_cat1_7_1  EQ 3 AND  tm_cat1_7_2 EQ 3  AND tm_cat1_7_3 EQ 3 AND tm_cat1_7_4 EQ 3  iz_iz = 3.
+
+
+
+# Fce splitdata pripravi vybrane promenne do formatu pro zobrazeni pomoci ggplot2.
+  # column_numbers: hlavni promenne(a); cisla jejich sloupcu se ziskaji pomoci fce cisla_sloupcu()
+  # split_variables: dle kterych promennych delit hlavni promenne (definovana jmeny, ne cisly sloupcu)
+  # Priklad:  splitdata(c(43, 1312), c("e_sex", "work_3cat"), eu8)
+my_group_by <- function(data, cols) {
+  group_by(data, pick({{ cols }}))
+}
+
+splitdata <- function(column_numbers, split_variables = NA, weightvar = 1, df) {
+  # if(!is.numeric(column_numbers) | !is.character(split_variables)) {
+  #   stop(("Insert column numbers of variables and names of splitting variables"))
+  # }
+  plotData <- NULL
+  if (!any(is.na(split_variables))) {
+  for (j in split_variables) {
+    df <- df %>% filter (!is.na(.data[[j]]))
+    }
+  }
+
+  for (i in colnames(df[column_numbers])) {
+    if(!any(is.na(split_variables))) {
+
+      x <- as.data.frame(df %>%
+                        my_group_by(all_of(c(split_variables, i))) %>%
+                        filter(!is.na(.data[[i]])) %>%
+                        dplyr::summarise(n = n(),
+                                         vaha = mean({{weightvar}}, na.rm = T),
+                                         wn = round(n*vaha))) %>%
+                        ungroup() %>%
+                        my_group_by(all_of(c(split_variables))) %>%       
+                        mutate(prop = prop.table(wn),
+                                vari = i)
+      colnames(x)[which(colnames(x) == i)] <- "value"
+      plotData <- rbind(plotData, x)
+    }
+    else {
+      x <- as.data.frame(df %>%
+                        my_group_by(all_of(i)) %>%
+                        filter(!is.na(.data[[i]])) %>%
+                        dplyr::summarise(n = n(),
+                                         vaha = mean({{weightvar}}, na.rm = T),
+                                         wn = round(n*vaha))) %>%
+                        mutate(prop = prop.table(wn),
+                                vari = i)
+      colnames(x)[which(colnames(x) == i)] <- "value"
+      plotData <- rbind(plotData, x)
+    }
+  }
+  plotData
+}
+
+# Prikaz cliff_data vytvori novy datovy soubor z plotdata s vazenymi pocty pozorovani
+#   Pokracovani: w_cliff
+cliff_data <- function(plot_data) {
+  n_grouping_vars <- which(colnames(plotdata) == "value") - 1
+  grouping_vars <- colnames(plotdata[c(1:n_grouping_vars)])
+  
+  grouped_weight_df <- plot_data %>%
+  my_group_by(all_of(c("vari", grouping_vars))) %>%
+  summarise(new_df = list(uncount(across(), wn)))
+  print(grouped_weight_df)
+
+  extracted_dfs <- lapply(grouped_weight_df$new_df, identity)
+  extracted_dfs
+}
+
+# Vypocet vazeneho Cliffova delta
+# Hodnoty cisla group1 a group2 zavisi na tom, ktere dva podsoubory extracted_dfs chceme porovnat 
+w_cliff <- function(extracted_df, group1, group2) {
+  cliff.delta(as.numeric(unlist(extracted_df[[group1]][[1]])),as.numeric(unlist(extracted_df[[group2]][[1]])))
+}
+
+# Fce slouzici u boxplotu jako parametr pro stat_summary
+get_box_stats <- function(y) {
+  return(data.frame(
+    y = upper_limit,
+    label = paste(" n =", length(y), "\n",
+      " Prům.: ", round(mean(y), 1), "\n",
+      " Med.: ", round(median(y), 1), "\n"
+    )
+  ))
+}
+
+# Fce vraci cisla sloupcu, jejichz jmena jsou zadana jako parametry
+cisla_sloupcu <- function(data, sloupce) {
+  x <- c()
+  for (i in 1:length(sloupce)) {
+    a <- which(colnames(data) == sloupce[i])
+    x <- c(x, a)
+  }
+  x
+}
+
+# Fce pro vytvareni split violin
+GeomSplitViolin <- ggproto("GeomSplitViolin", GeomViolin, 
+                           draw_group = function(self, data, ..., draw_quantiles = NULL) {
+  data <- transform(data, xminv = x - violinwidth * (x - xmin), xmaxv = x + violinwidth * (xmax - x))
+  grp <- data[1, "group"]
+  newdata <- plyr::arrange(transform(data, x = if (grp %% 2 == 1) xminv else xmaxv), if (grp %% 2 == 1) y else -y)
+  newdata <- rbind(newdata[1, ], newdata, newdata[nrow(newdata), ], newdata[1, ])
+  newdata[c(1, nrow(newdata) - 1, nrow(newdata)), "x"] <- round(newdata[1, "x"])
+
+  if (length(draw_quantiles) > 0 & !scales::zero_range(range(data$y))) {
+    stopifnot(all(draw_quantiles >= 0), all(draw_quantiles <=
+      1))
+    quantiles <- ggplot2:::create_quantile_segment_frame(data, draw_quantiles)
+    aesthetics <- data[rep(1, nrow(quantiles)), setdiff(names(data), c("x", "y")), drop = FALSE]
+    aesthetics$alpha <- rep(1, nrow(quantiles))
+    both <- cbind(quantiles, aesthetics)
+    quantile_grob <- GeomPath$draw_panel(both, ...)
+    ggplot2:::ggname("geom_split_violin", grid::grobTree(GeomPolygon$draw_panel(newdata, ...), quantile_grob))
+  }
+  else {
+    ggplot2:::ggname("geom_split_violin", GeomPolygon$draw_panel(newdata, ...))
+  }
+})
+
+geom_split_violin <- function(mapping = NULL, data = NULL, stat = "ydensity", position = "identity", ..., 
+                              draw_quantiles = NULL, trim = TRUE, scale = "area", na.rm = FALSE, 
+                              show.legend = NA, inherit.aes = TRUE) {
+  layer(data = data, mapping = mapping, stat = stat, geom = GeomSplitViolin, 
+        position = position, show.legend = show.legend, inherit.aes = inherit.aes, 
+        params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))
+}
+
+```
+
+Celkový počet respondentů je `r nrow(eu8)`, návratnost je xxx.
+
+```{r analyza_EG8, include=FALSE, echo=TRUE, eval=TRUE}
+
+# Popis souboru ======================================
+df <- eu8
+round(prop.table(table(df$e_sex2)), 2)
+
+round(median(df$v3_2_1week, na.rm = T), 1)
+round(mean(df$v3_2_1week, na.rm = T), 1)
+sd(df$v3_2_1week, na.rm = T)
+
+round(median(df$v3_2_2week, na.rm = T), 1)
+round(mean(df$v3_2_2week, na.rm = T), 1)
+sd(df$v3_2_2week, na.rm = T)
+
+round(median(df$v4_5, na.rm = T), 1)
+round(mean(df$v4_5, na.rm = T), 1)
+sd(df$v4_5, na.rm = T)
+
+round(prop.table(table(df$v3_3_1)), 2)
+round(prop.table(table(df$v3_3_2)), 2)
+round(prop.table(table(df$v3_3_3)), 2)
+
+round(prop.table(table(df$rizikoUkonceni)), 2)
+
+round(prop.table(table(df$v4_1_1)), 2)
+
+round(prop.table(table(df$v4_6_3)), 2)
+      
+# "Without my paid job, I could not afford to be a student"
+df <- eu8
+x <- splitdata(column_numbers = cisla_sloupcu(df, "v4_6_3"), weightvar = weight, split_variables = c("work_2cat"), df = df)
+x$prop <- round(x$prop, 2)
+
+# "I work to gain experience on the labour market
+df <- eu8
+x <- splitdata(column_numbers = cisla_sloupcu(df, "v4_6_2"), weightvar = weight, split_variables = c("work_5cat"), df = df)
+x$prop <- round(x$prop, 2)
+
+
+# H1: Celkově vyšší časová zátěž (objektivní) je spojena s vyšší mírou time deprivation =========================================================
+
+spokojenost_list <- c("v3_3_1", "v3_3_2", "v3_3_3")
+hodiny_list <- c("v3_2_1week", "v3_2_2week", "v4_5")
+popis <- c("Studium ve škole", "Samostudium", "Placené zaměstnání")
+y_osa <- c("Hodiny ve škole", "Hodiny samostudia", "Hodiny v práci") 
+groupvar <- c("e_sex2")
+
+spokojenost_list_cisla <- cisla_sloupcu(eu8, c("v3_3_1", "v3_3_2", "v3_3_3"))
+hodiny_list_cisla <- cisla_sloupcu(eu8, c("v3_2_1week", "v3_2_2week", "v4_5"))
+
+
+df_test <- eu8[c(spokojenost_list, hodiny_list, "e_sex2")]
+dfrec <- df_test %>% mutate(across(v3_3_1:e_sex2, ~ scale(.)))
+
+  # Celkem
+for (i in 1:3) {
+df <- eu8 %>% filter(!is.na(.data[[spokojenost_list[i]]]), !is.na(.data[[hodiny_list[i]]]))
+df <- df %>% mutate(across(all_of(hodiny_list), ~replace(., . > 100, NA_real_)))
+upper_limit <- max(df[[hodiny_list[1]]], na.rm = T)+25
+
+h1 <- df %>%
+  ggplot(aes(x = as.factor(.data[[spokojenost_list[i]]]), y = .data[[hodiny_list[i]]], weight = weight_random)) +
+  geom_violin(draw_quantiles = 0.5)+ xlab(paste0("Kolik by chtěli času na: ", popis[i])) + ylab(y_osa[i]) +
+  scale_y_continuous(limits = c(0, 95), breaks = c(seq(0, upper_limit, 20))) +
+  theme_minimal() +
+  theme(text = element_text(colour = "black", size = fontsize),
+        axis.text.x = element_text(size = fontsize, colour = "black"),
+        axis.title = element_text(face = "bold"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank())+
+  stat_summary(fun.data = get_box_stats, geom = "text", hjust = 1, vjust = 0.9, size = fontsize_div) +
+  stat_summary(fun = "mean", geom = "point", position = position_dodge2(width = 1))
+  
+
+ragg::agg_png(paste0("./outputs/spokojenost_hodiny_", spokojenost_list[i], ".png"), width = page_width, height = 7, units = "cm", res = 300)
+print(h1)
+dev.off()
+
+
+hh <- df %>%
+  ggplot(aes(x = v3_3_1, y = v3_2_1week, weight = weight)) +
+  geom_violin(draw_quantiles = 0.5)
+
+xxdf <- df %>% filter(v3_3_1 == "Méně" & e_sex2 == "Male")
+wtd.mean(xxdf$v3_2_1week)
+
+
+cat("Méně vs. stejně:")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Méně"], df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"], ci = 0.99))
+cat("\n\n")
+cat("Stejně vs. více:")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"], df[hodiny_list[i]][df[spokojenost_list[i]] == "Více"], ci = 0.99))
+cat("\n\n")
+}
+
+
+cohens_d(df$v3_2_1week[df$v3_3_1 == "Méně"], df$v3_2_1week[df$v3_3_1 == "Stejně"]) 
+
+
+  # Dle pohlavi (pouze ti, kteří nežijí s rodiči)
+for (i in 1:3) {
+df <- eu8 %>% filter(!is.na(.data[[spokojenost_list[i]]]), !is.na(.data[[hodiny_list[i]]]), v4_1_1 != "Yes")
+df <- df %>% mutate(across(all_of(hodiny_list), ~replace(., . > 100, NA_real_)))
+svydf <- svydesign(ids = ~1, weights = ~weight, data = df)
+upper_limit <- max(df[[hodiny_list[1]]], na.rm = T)+25
+
+my_comparisons <- list( c("Méně", "Stejně"), c("Stejně", "Více"), c("Méně", "Více") )
+my_comparisons <- list( c("Ženy", "Muži"), c("Ženy", "Muži"), c("Ženy", "Muži") )
+
+h1 <- df %>%
+  ggplot(aes(x = as.factor(.data[[spokojenost_list[i]]]), y = .data[[hodiny_list[i]]], fill = e_sex2)) +
+  geom_split_violin(color = NA) + xlab(paste0("Kolik by chtěli času na: ", popis[i])) + ylab(y_osa[i]) +
+  scale_y_continuous(limits = c(0, 95), breaks = c(seq(0, upper_limit, 20))) +
+  theme_minimal() +
+  theme(text = element_text(colour = "black", size = fontsize),
+        axis.text.x = element_text(size = fontsize, colour = "black"),
+        axis.title = element_text(face = "bold"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = c(0.95, 0.63),
+        legend.key.size = unit(0.5, "cm")) +
+  scale_fill_manual(values = rev(c(alpha(viridis(2), 0.6))), labels = c("Ženy", "Muži")) +
+  stat_summary(fun.data = get_box_stats, geom = "text", hjust = 0.8, vjust = 0.4, size = fontsize_div-0.7, position = position_dodge2(width = 0.8)) +
+  stat_summary(fun = "mean", geom = "point", position = position_dodge2(width = 0.3)) +
+  stat_summary(fun = "median", geom = "point", color = "darkred", shape = 95, size = 8, position = position_dodge2(width = 0.3)) +
+  guides(shape = guide_legend(override.aes = list(linewidth = 1)))
+
+
+
+ragg::agg_png(paste0("./outputs/spokojenost_hodiny_pohl_", spokojenost_list[i], ".png"), width = page_width, height = 7, units = "cm", res = 300)
+print(h1)
+dev.off()
+
+cat(popis[i], "Ženy - Méně vs. stejně:")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Méně" & df["e_sex2"] == "Female"],
+               df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"  & df["e_sex2"] == "Female"], ci = 0.99))
+cat("\n\n")
+
+cat(popis[i], "Ženy - Stejně vs. více:")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně" & df["e_sex2"] == "Female"],
+               df[hodiny_list[i]][df[spokojenost_list[i]] == "Více" & df["e_sex2"] == "Female"], ci = 0.99))
+cat("\n\n")
+
+cat(popis[i], "Muži - Méně vs. stejně:")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Méně" & df["e_sex2"] == "Male"], 
+               df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně" & df["e_sex2"] == "Male"], ci = 0.99))
+cat("\n\n")
+
+cat(popis[i], "Muži - Stejně vs. více:")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"  & df["e_sex2"] == "Male"],
+               df[hodiny_list[i]][df[spokojenost_list[i]] == "Více"  & df["e_sex2"] == "Male"], ci = 0.99))
+cat("\n\n")
+
+cat(popis[i], "Ženy vs Muži  - Méně: ")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Méně"  & df["e_sex2"] == "Female"],
+               df[hodiny_list[i]][df[spokojenost_list[i]] == "Méně"  & df["e_sex2"] == "Male"], ci = 0.99))
+cat("\n\n")
+
+cat(popis[i], "Ženy vs Muži  - Stejně: ")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"  & df["e_sex2"] == "Female"],
+               df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"  & df["e_sex2"] == "Male"], ci = 0.99))
+cat("\n\n")
+
+cat(popis[i], "Ženy vs Muži  - Více: ")
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Více"  & df["e_sex2"] == "Female"],
+               df[hodiny_list[i]][df[spokojenost_list[i]] == "Více"  & df["e_sex2"] == "Male"], ci = 0.99))
+cat("\n\n")
+}
+
+
+
+ # Dle pohlavi pomoci ggbetweenstats
+for (i in 1:3) {
+df <- eu8 %>% filter(!is.na(.data[[spokojenost_list[i]]]), !is.na(.data[[hodiny_list[i]]]))
+df <- df %>% mutate(across(all_of(hodiny_list), ~replace(., . > 100, NA_real_)))
+upper_limit <- max(df[[hodiny_list[1]]], na.rm = T)+25
+
+ggbetweenstats(df, x = v3_3_1 , y = v3_2_1week, )
+
+h1 <- df %>%
+  ggplot(aes(x = as.factor(.data[[spokojenost_list[i]]]), y = .data[[hodiny_list[i]]], fill = e_sex2)) +
+  geom_split_violin(color = NA) + xlab(paste0("Kolik by chtěli času na: ", popis[i])) + ylab(y_osa[i]) +
+  scale_y_continuous(limits = c(0, 95), breaks = c(seq(0, upper_limit, 20))) +
+  theme_minimal() +
+  theme(text = element_text(colour = "black", size = fontsize),
+        axis.text.x = element_text(size = fontsize, colour = "black"),
+        axis.title = element_text(face = "bold"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = c(0.95, 0.63),
+        legend.key.size = unit(0.5, "cm")) +
+  scale_fill_manual(values = rev(c(alpha(viridis(2), 0.6))), labels = c("Ženy", "Muži")) +
+  stat_summary(fun.data = get_box_stats, geom = "text", hjust = 0.8, vjust = 0.4, size = fontsize_div-0.7, position = position_dodge2(width = 0.8)) +
+  stat_summary(fun = "mean", geom = "point", position = position_dodge2(width = 0.3)) +
+  stat_summary(fun = "median", geom = "point", color = "darkred", shape = 95, size = 8, position = position_dodge2(width = 0.3)) +
+  guides(shape = guide_legend(override.aes = list(linewidth = 1)))
+
+ragg::agg_png(paste0("./outputs/spokojenost_hodiny_pohl_", spokojenost_list[i], ".png"), width = page_width, height = 7, units = "cm", res = 300)
+print(h1)
+dev.off()
+
+}
+
+  # vztah naopak: Pocit time deprivation dle poctu hodin
+df <- eu8
+plotData <- NULL
+sloupce <- which(colnames(df) == "v3_3_3")
+
+for (i in colnames(eu8[sloupce])) {
+  x <- as.data.frame(df %>%
+                        group_by(work_7cat, .data[[i]], .drop = F) %>%
+                        filter(!is.na(.data[[i]])) %>%
+                       dplyr::summarise(n = n()) %>%
+                        mutate(prop = prop.table(n),
+                                vari = i))
+  colnames(x)[2] <- "value"
+  plotData <- rbind(plotData, x)
+}
+
+plotCelkem <- ggplot(plotData, aes(x="x", y=prop, fill = factor(value, levels = levels(value)))) +
+    facet_wrap(work_7cat ~ ., nrow = 1) + 
+    geom_bar(position = "fill", stat="identity", width = 0.7)  + 
+    geom_shadowtext(aes(label = ifelse(prop > 0.03, format(round(prop*100, 0), nsmall = 0), "")), color = "white", size = fontsize_div, 
+              position = position_stack(vjust = 0.5)) +
+    theme_minimal() + scale_y_continuous(labels = function(x) paste0(x*100, ""), breaks = seq(0, 1, 0.1)) + 
+    theme(text = element_text(colour = "black", size = fontsize),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.major = element_line(colour = "grey"),
+          axis.text.x = element_blank(),
+          axis.title = element_blank(),
+          #axis.text.x = element_text(hjust = 0.5, color = "black", vjust = 0, angle = 0),
+          plot.margin = unit(c(0,0,0,0), "cm"), 
+          axis.ticks = element_blank(), 
+          legend.title = element_blank(), legend.key.size = unit(0.7, "cm"),
+          legend.direction = "vertical", legend.position = "right", 
+          strip.text.x = element_text(angle = 0, vjust = 0),
+          plot.caption = element_text(hjust = 1, size = 8)) +
+    scale_fill_ordinal(direction = -1, option = "D", begin = 0)
+
+
+# Pocit time deprivation dle poctu hodin dle pohlavi =====
+
+df <- eu8
+plotData <- NULL
+sloupce <- which(colnames(df) == "rizikoUkonceni")
+
+for (i in colnames(df[sloupce])) {
+  x <- as.data.frame(df %>%
+                        group_by(e_sex, work_3cat, .data[[i]], .drop = F) %>%
+                        filter(!is.na(.data[[i]])) %>%
+                        dplyr::summarise(n = n()) %>%
+                        mutate(prop = prop.table(n),
+                                vari = i))
+  which(colnames(plotData) == "")
+  colnames(x)[which(colnames(x) == i)] <- "value"
+  plotData <- rbind(plotData, x)
+}
+
+
+plotCelkem <- ggplot(plotData, aes(x=e_sex, y=prop, fill = factor(value, levels = levels(value)))) +
+    facet_wrap(work_3cat ~ ., nrow = 1) + 
+    geom_bar(position = "fill", stat="identity", width = 0.7)  + 
+    geom_shadowtext(aes(label = ifelse(prop > 0.03, format(round(prop*100, 0), nsmall = 0), "")), color = "white", size = fontsize_div, 
+              position = position_stack(vjust = 0.5)) +
+    theme_minimal() + scale_y_continuous(labels = function(x) paste0(x*100, ""), breaks = seq(0, 1, 0.1)) + 
+    theme(text = element_text(colour = "black", size = fontsize),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.major = element_line(colour = "grey"),
+          axis.text.x = element_blank(),
+          axis.title = element_blank(),
+          #axis.text.x = element_text(hjust = 0.5, color = "black", vjust = 0, angle = 0),
+          plot.margin = unit(c(0,0,0,0), "cm"), 
+          axis.ticks = element_blank(), 
+          legend.title = element_blank(), legend.key.size = unit(0.7, "cm"),
+          legend.direction = "vertical", legend.position = "right", 
+          strip.text.x = element_text(angle = 0, vjust = 0),
+          plot.caption = element_text(hjust = 1, size = 8)) +
+    scale_fill_ordinal(direction = -1, option = "D", begin = 0)
+
+# H1b Genderovy aspekt time deprivation ====
+df <- eu8
+plotData <- NULL
+sloupce <- which(colnames(df) == c("v3_3_1")):which(colnames(df) == c("v3_3_3"))
+
+for (i in colnames(eu8[sloupce])) {
+  x <- as.data.frame(df %>%
+                        group_by(e_sex, .data[[i]], .drop = F) %>%
+                        filter(!is.na(.data[[i]])) %>%
+                        dplyr::summarise(n = n()) %>%
+                        mutate(prop = round(prop.table(n), 2),
+                                vari = i))
+  colnames(x)[2] <- "value"
+  plotData <- rbind(plotData, x)
+}
+
+plotCelkem <- ggplot(plotData, aes(x=e_sex, y=prop, fill = value)) +
+    facet_wrap(vari ~ ., nrow = 1) + 
+    geom_bar(position = "fill", stat="identity", width = 0.7) + xlab("") + ylab("%")+
+    geom_shadowtext(aes(label = ifelse(prop > 0.03, format(round(prop*100, 0), nsmall = 0), "")), color = "white", size = 3, 
+              position = position_stack(vjust = 0.5)) +
+    theme_minimal() + scale_y_continuous(labels = function(x) paste0(x*100, ""), breaks = seq(0, 1, 0.1)) + 
+    theme(text = element_text(colour = "black", size = 8),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.major = element_line(colour = "grey"),
+          axis.text.x = element_text(),
+          #axis.text.x = element_text(hjust = 0.5, color = "black", vjust = 0, angle = 0),
+          plot.margin = unit(c(0,0,0,0), "cm"), 
+          axis.ticks = element_blank(),
+          axis.title = element_blank(),
+          legend.title = element_blank(), legend.key.size = unit(0.4, "cm"),
+          legend.direction = "vertical", legend.position = "right", 
+          strip.text.x = element_text(angle = 0, vjust = 0)) +
+    scale_fill_ordinal(direction = -1, option = "D", begin = 0)
+
+prop.table(table(eu8$v4_6_3)) 
+
+table(df$v4_1_4)
+
+# H2: Vyšší pracovní zátěž vede k významným negativním dopadům na studium  =========================================================
+ df <- eu8
+  # Bez prace by si nemohli dovolit byt student
+  x <- splitdata(column_numbers = cisla_sloupcu(df, "v4_6_3"), split_variables = c("work_2cat"), df = df)
+  x$prop <- round(x$prop, 2)
+
+bb <- df[, c("v3_2_1week", "v3_2_2week", "v4_5", "v3_3_1", "v3_3_2", "v3_3_3")]
+ggpairs(bb)
+
+
+# H2a Negativní dopad: Přemýšlí o ukončení studia
+df <- eu8
+x <- splitdata(column_numbers = cisla_sloupcu(df, "rizikoUkonceni"), split_variables = c("v4_5cat"), df = df)
+x$prop <- round(x$prop, 2)
+
+  #v4_1_1: Bydli s rodici?
+  #v4_16 (= e_findif): financni potize
+x <- splitdata(column_numbers = cisla_sloupcu(df, "e_findif"), weightvar = weight, df = df)
+
+df$v3_3_1 <- relevel(df$v3_3_1, ref = "Stejně")
+df$v3_3_2 <- relevel(df$v3_3_2, ref = "Stejně")
+df$v3_3_3 <- relevel(df$v3_3_3, ref = "Stejně")
+df$e_findif <- factor(df$e_findif, levels = c("Students without financial difficulties", "Middle category, not for analyses",
+                                              "Students with financial difficulties"))
+
+m1 <- clm(rizikoUkonceni ~ cas_skola_cat + v4_5cat + v3_3_1 + v3_3_2 + v3_3_3 + e_sex + v4_1_1 + e_findif, data = df)
+coef(summary(m1))
+exp(coef(m1, matrix = T))
+nominal_test(m1)    #nominal test i Brantův test zjišťují, které proměnné nesplňují proportional odds assumption
+df_brant <- gofcat::brant.test(m1)
+
+m1ppo <- vglm(rizikoUkonceni ~ cas_skola_cat + v4_5cat + v3_3_1 + v3_3_2 + v3_3_3 + e_sex + v4_1_1 + e_findif,
+             family = cumulative(parallel = FALSE ~ v3_3_3 + e_sex, reverse = TRUE), data = df)
+hosmerlem(m1ppo)
+summary(m1ppo)
+exp(coef(m1ppo, matrix = T))
+m1ppo_phodnoty <- as.data.frame(round(coef(summary(m1ppo))[, 4], 3))
+colnames(m1ppo_phodnoty) <- "raw_p"
+m1ppo_poradi <- rownames(m1ppo_phodnoty)
+m1ppo_phodnoty_sort <- m1ppo_phodnoty %>% dplyr::arrange(raw_p)
+
+m1ppo_phodnoty_sort$BH <- p.adjust(m1ppo_phodnoty_sort$raw_p, method = "BH")
+m1ppo_phodnoty_sort$holm <- p.adjust(m1ppo_phodnoty_sort$raw_p, method = "holm")
+m1ppo_phodnoty_sort$BY <- p.adjust(m1ppo_phodnoty_sort$raw_p, method = "BY")
+m1ppo_phodnoty_final <- m1ppo_phodnoty_sort[match(m1ppo_poradi, rownames(m1ppo_phodnoty_sort)),]
+
+m1ppo_phodnoty_final %<>% mutate(sighvezdy_BY = factor(case_when(BY < 0.001 ~ "***",
+                                                                 BY < 0.01 ~ "**",
+                                                                 BY < 0.05 ~ "*")))
+
+m1_inter <- clm(rizikoUkonceni ~ cas_skola_cat + v4_5cat + v3_3_1 + v3_3_2 + v3_3_3 + e_sex + v4_1_1 + cas_skola_cat*v3_3_1 +
+            cas_skola_cat*v3_3_2 + v4_5cat*v3_3_3 + v4_5cat*e_findif + e_findif*v3_3_3, data = df)
+nominal_test(m1_inter)
+gofcat::brant.test(m1_inter)
+
+summary(m1)
+exp(coef(m1, matrix = T))
+
+m1_inter_ppo <- vglm(rizikoUkonceni ~ cas_skola_cat + v4_5cat + v3_3_1 + v3_3_2 + v3_3_3 + e_sex + v4_1_1 + e_findif + cas_skola_cat*v3_3_1 +
+            cas_skola_cat*v3_3_2 + v4_5cat*v3_3_3 + v4_5cat*e_findif + e_findif*v3_3_3,
+            family = cumulative(parallel = FALSE ~ v3_3_3 + e_sex, reverse = TRUE), data = df)
+summary(m1_inter_ppo)
+exp(coef(m1_inter_ppo, matrix = T))
+anova(m1ppo, type=3, test="LR")
+
+
+sloupce <- which(colnames(df) == "rizikoUkonceni")
+plotData <- NULL
+for (i in colnames(df[sloupce])) {
+  x <- as.data.frame(df %>%
+                        group_by(e_findif, .data[[i]], .drop = F) %>%
+                        filter(!is.na(.data[[i]])) %>%
+                        dplyr::summarise(n = n()) %>%
+                        mutate(prop = round(prop.table(n), 2),
+                                vari = i))
+  colnames(x)[2] <- "value"
+  plotData <- rbind(plotData, x)
+}
+
+mene <- df %>% filter(v3_3_1 == "Méně")
+stejne <- df %>% filter(v3_3_1 == "Stejně")
+
+prop.table(table(mene$rizikoUkonceni))
+prop.table(table(stejne$rizikoUkonceni))
+
+
+
+#testovaci radek, smazat
+
+
+
+  # Alternativni zpusob
+m <- polr(v3_1_8 ~ v3_2_1week + v3_2_2week + v4_5, data = eu8, Hess=TRUE)
+m2 <- polr(v3_1_8 ~ v3_3_1 + v3_3_2 + v3_3_3, data = eu8, Hess=TRUE)
+m3 <- polr(rizikoUkonceni ~ v3_2_1week + v3_2_2week + v4_5 + v3_3_1 + v3_3_2 + v3_3_3 + e_sex + v4_1_1, data = df, Hess=TRUE)
+
+summary(m)
+exp(coef(m))
+summary(m2)
+exp(coef(m2))
+summary(m3)
+exp(coef(m3))
+
+sf <- function(y) {
+  c('Y>=1' = qlogis(mean(y >= 1)),
+    'Y>=2' = qlogis(mean(y >= 2)),
+    'Y>=3' = qlogis(mean(y >= 3)),
+    'Y>=4' = qlogis(mean(y >= 4)),
+    'Y>=5' = qlogis(mean(y >= 5)))
+}
+
+sf3 <- function(y) {
+  c('Y>=1' = qlogis(mean(y >= 1)),
+    'Y>=2' = qlogis(mean(y >= 2)),
+    'Y>=3' = qlogis(mean(y >= 3)))
+}
+
+s <- with(df, summary(as.numeric(rizikoUkonceni) ~ v3_2_1week + v3_2_2week + v4_5 + v3_3_1 + v3_3_2 + v3_3_3, fun=sf3))
+
+plot(s, which=1:3, pch=1:3, xlab='logit', main=' ', xlim=range(s[,3:4]))
+
+ragg::agg_png(paste0("./outputs/assumption.png"), width = page_width, height = 15, units = "cm", res = 300)
+plot(s, which=1:3, pch=1:3, xlab='logit', main=' ', xlim=range(s[,3:6]))
+dev.off()
+
+
+
+
+
+
+
+# H3 - Studenti subjektivně spokojení s mírou časové zátěže vykazují větší spokojenost se studiem =========================================
+
+df <- eu8
+
+  # Hodiny ve škole
+plotdata <- splitdata(column_numbers = cisla_sloupcu(df, "v3_1_5"), split_variables = c("v3_3_1", "v4_1_1"), df = df)
+plotdata <- plotdata[!is.na(plotdata$v3_3_1), ]
+
+plot <- ggplot(plotdata, aes(x= (v4_1_1), y=prop, fill = (v3_3_1))) + 
+  facet_wrap(value ~ ., ncol = 5) +
+  geom_bar(position = "fill", stat="identity", width = 0.8)  +
+  geom_shadowtext(aes(label = ifelse(prop > 0.03, format(round(prop*100, 0), nsmall = 0), "")), color = "white", size = fontsize_div,
+              position = position_stack(vjust = 0.5))
+
+  # Hodiny samostudia
+plotdata <- splitdata(column_numbers = cisla_sloupcu(df, "v3_1_5"), split_variables = c("v3_3_2"), df = df)
+plotdata <- plotdata[!is.na(plotdata$v3_3_2), ]
+
+plot <- ggplot(plotdata, aes(x= (value), y=prop, fill = fct_rev(v3_3_2))) +
+    geom_bar(position = "fill", stat="identity", width = 0.8) 
+
+  # Hodinyv práci
+plotdata <- splitdata(column_numbers = cisla_sloupcu(df, "v3_1_5"), split_variables = c("v3_3_3"), df = df)
+plotdata <- plotdata[!is.na(plotdata$v3_3_3), ]
+
+plot <- ggplot(plotdata, aes(x= (value), y=prop, fill = fct_rev(v3_3_3))) +
+    geom_bar(position = "fill", stat="identity", width = 0.8) 
+
+plot(df$v3_1_5, df$v3_3_3)
+
+
+
++  xlab("Field") + ylab("") + 
+    labs(title = "Current competence level - scales comparison by field",
+         caption = paste0("n(Languages) = ", is_Languages_n, "; n(Other) = ", ostatni_n, "; d ~ Cliff's delta; Source: EUROGRADUATE 2022")) +
+    geom_shadowtext(aes(label = ifelse(prop > 0.03, format(round(prop*100, 0), nsmall = 0), "")), color = "white", size = fontsize_div, family = fontfamily, 
+              position = position_stack(vjust = 0.5)) +
+    theme_minimal() +
+    scale_y_continuous(labels = function(x) paste0(x*100, " %"), breaks = seq(0, 1, 0.1)) +
+    theme(text = element_text(colour = "black", family = fontfamily,  size = fontsize),
+          plot.title = element_text(hjust = 0, vjust = 0, size = 10, face = "bold"),
+          plot.title.position = "plot",
+          plot.caption = element_text(hjust = 1, vjust = 2, face = "bold"),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          axis.text.x = element_text(hjust = 0.5, color = "darkgrey", vjust = 0, angle = 0),
+          plot.margin = unit(c(0,0.5,0.1,0.1), "cm"),
+          axis.ticks = element_blank(),
+          axis.title.x = element_text(family = fontfamily,  size = fontsize),
+          axis.title.y = element_text(family = fontfamily,  size = fontsize),
+          legend.title = element_blank(), legend.key.size = unit(0.4, "cm"),
+          legend.justification = c("right"),
+          legend.direction = "horizontal", legend.position = c("bottom"),
+          strip.text.x = element_text(angle = 0, vjust = 0, size = fontsize)) +
+    scale_fill_manual(values = desaturatedViridis(length(unique(plotdata$value)))) +
+    guides(fill = guide_legend(reverse = T, nrow = 1)) +
+    geom_text(data = cliff_text, mapping = aes(x = 1.5, y = 1.06, label = label),
+              size = fontsize_div-0.2, family = fontfamily, hjust = 0.5, inherit.aes = FALSE, parse = F)
+
+
+  # v3_1_5: I would recommend my current (main) study programme. (1 - souhlas, 5 - nesouhlas)
+
+ragg::agg_png(paste0("./outputs/doporuciliby_dle_spokojenosti_studiumveskole.png"), width = 10, height = 9, units = "cm", res = 300)
+plot(df$v3_1_5, df$v3_3_1)
+dev.off()
+
+ragg::agg_png(paste0("./outputs/doporuciliby_dle_spokojenosti_samostudium.png"), width = 10, height = 9, units = "cm", res = 300)
+plot(df$v3_1_5, df$v3_3_2)
+dev.off()
+
+ragg::agg_png(paste0("./outputs/doporuciliby_dle_spokojenosti_prace.png"), width = 10, height = 9, units = "cm", res = 300)
+plot(df$v3_1_5, df$v3_3_3)
+dev.off()
+
+spokojenost_list
+
+
+kruskal.test(v3_1_5 ~ v3_3_3, data = df)
+
+
+# Regrese pro Lucku ============
+model1 <- clm(v3_1_8 ~ e_age + e_sex + e_edupar_agg + e_intens + e_findif + iz_iz, data = eu8)
+summary(model1)
+nominal_test(model1)
+
+model1ppo <- vglm(v3_1_8 ~ e_age + e_sex + e_edupar_agg + e_intens + e_findif + iz_iz, 
+                  family = cumulative(parallel = FALSE ~ e_age + e_sex + e_intens, reverse = FALSE), data = eu8)
+summary(model1ppo)
+
+exp(coef(model1ppo, matrix = T))
+
+sk1 <- eu8 %>% filter(e_age == "up to 21 years")
+sk2 <- eu8 %>% filter(e_age == "22 to <25 years")
+
+sk1 <- eu8 %>% filter(e_sex == "Female")
+sk2 <- eu8 %>% filter(e_sex == "Male")
+
+sk1 <- eu8 %>% filter(e_edupar_agg == "No tertiary education (ISCED 0-4)")
+sk2 <- eu8 %>% filter(e_edupar_agg == "Tertiary education (ISCED 5-8)")
+
+tab1 <- round(prop.table(table(sk1$v3_1_8)), 3)[5]
+tab2 <- round(prop.table(table(sk2$v3_1_8)), 3)[5]
+
+otab1 <- tab1/(1-tab1)
+otab2 <- tab2/(1-tab2)
+
+otab2/otab1
+
+
+round(prop.table(table(sk1$v3_1_8)), 3)
+round(prop.table(table(sk2$v3_1_8)), 3)
+
+# https://towardsdatascience.com/partial-proportional-odd-model-in-r-dc5face36e40
+model1 <- clm(v3_1_8 ~ v3_2_1week + v3_2_2week + v4_5, data = eu8)
+nominal_test(model1)
+
+model1ppo <- vglm(v3_1_8 ~ v3_2_1week + v3_2_2week + v4_5, family = cumulative(parallel = FALSE ~ v3_2_2week + v4_5 , reverse = FALSE), data = eu8)
+summary(model1ppo)
+
+exp(coef(model1ppo, matrix = T))
+
+
+model2 <- clm(v3_1_8 ~ v3_3_1 + v3_3_2 + v3_3_3, data = eu8)
+nominal_test(model2)
+
+model2ppo <- vglm(v3_1_8 ~ v3_3_1 + v3_3_2 + v3_3_3, family = cumulative(parallel = FALSE ~ v3_3_1 + v3_3_3 , reverse = FALSE), data = eu8)
+summary(model2ppo)
+
+exp(coef(model2ppo, matrix = T))
+
+
+
+
+
+```
+
+```{r analyza_EG7, include=FALSE, echo=TRUE, eval=TRUE}
+
+# H1: Celkově vyšší časová zátěž (objektivní) je spojena s vyšší mírou time deprivation =========================================================
+
+spokojenost_list <- c("v3_5_1", "v3_5_2", "v3_5_3")
+hodiny_list <- c("v3_4_1week", "v3_4_2week", "v4_6")
+popis <- c("studium ve škole", "samostudium", "placené zaměstnání")
+groupvar <- c("v6_2")
+
+spokojenost_list_cisla <- cisla_sloupcu(eu, c("v3_5_1", "v3_5_2", "v3_5_3"))
+hodiny_list_cisla <- cisla_sloupcu(eu, c("v3_4_1week", "v3_4_2week", "v4_6"))
+
+upper_limit <- max(df[[hodiny_list[1]]], na.rm = T)+25
+
+#Dle pohlavi
+for (i in 1:3) {
+df <- eu %>% filter(!is.na(.data[[spokojenost_list[i]]]), !is.na(.data[[hodiny_list[i]]]), v6_2 != 4)
+df <- df %>% mutate(across(c(v3_4_1week, v3_4_2week, v4_6), ~replace(., . > 100, NA_real_)))
+df$v6_2 <- factor(df$v6_2, levels = c(1,2), labels = c("Ženy", "Muži"))
+
+h1 <- df %>%
+  ggplot(aes(fill = v6_2,x = as.factor(.data[[spokojenost_list[i]]]), y = .data[[hodiny_list[i]]])) +
+  geom_violin(draw_quantiles = 0.5)+ xlab(paste0("Chce času na: ", popis[i])) + ylab("Hodiny") +
+  scale_y_continuous(limits = c(0, 120), breaks = c(seq(0, upper_limit, 20))) +
+  theme_minimal() +
+  theme(text = element_text(colour = "black", size = fontsize),
+        axis.text.x = element_text(size = fontsize, colour = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),) +
+  stat_summary(fun = "mean", geom = "point", position = position_dodge2(width = 1)) +
+  stat_summary(fun.data = get_box_stats, geom = "text", hjust = 1, vjust = 0.9, size = fontsize_div)
+
+ragg::agg_png(paste0("./outputs/spokojenost_hodiny_pohl_", spokojenost_list[i], ".png"), width = page_width, height = 8, units = "cm", res = 300)
+print(h1)
+dev.off()
+}
+
+# Celkem
+for (i in 1:3) {
+df <- eu %>% filter(!is.na(.data[[spokojenost_list[i]]]), !is.na(.data[[hodiny_list[i]]]))
+df <- df %>% mutate(across(c(v3_4_1week, v3_4_2week, v4_6), ~replace(., . > 100, NA_real_)))
+
+h1 <- df %>%
+  ggplot(aes(x = as.factor(.data[[spokojenost_list[i]]]), y = .data[[hodiny_list[i]]])) +
+  geom_violin(draw_quantiles = 0.5)+ xlab(paste0("Chce času na: ", popis[i])) + ylab("Hodiny") +
+  scale_y_continuous(limits = c(0, 120), breaks = c(seq(0, upper_limit, 20))) +
+  theme_minimal() +
+  theme(text = element_text(colour = "black", size = fontsize),
+        axis.text.x = element_text(size = fontsize, colour = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),) +
+  stat_summary(fun = "mean", geom = "point", position = position_dodge2(width = 1)) +
+  stat_summary(fun.data = get_box_stats, geom = "text", hjust = 1, vjust = 0.9, size = fontsize_div)
+
+ragg::agg_png(paste0("./outputs/spokojenost_hodiny_", spokojenost_list[i], ".png"), width = page_width, height = 8, units = "cm", res = 300)
+print(h1)
+dev.off()
+
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Méně"], df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"]))
+print(cohens_d(df[hodiny_list[i]][df[spokojenost_list[i]] == "Stejně"], df[hodiny_list[i]][df[spokojenost_list[i]] == "Více"]))
+}
+
+#Studium ve škole
+subset(eu, !is.na(v3_5_1) & !is.na(v3_4_1week)) %>%
+  group_by(v3_5_1) %>%
+  summarise(round(mean(v3_4_1week, na.rm = T), digits = 1),
+            round(median(v3_4_1week, na.rm = T), digits = 1),
+            n=n())
+
+model1 <- aov(v3_4_1week ~ v3_5_1, data = eu)
+summary(model2)
+interpret(eta_squared(model1, partial = TRUE), rules = "cohen1992")
+
+cohens_d(eu$v3_4_1week[eu$v3_5_1 == "Méně"], eu$v3_4_1week[eu$v3_5_1 == "Stejně"])
+cohens_d(eu$v3_4_1week[eu$v3_5_1 == "Stejně"], eu$v3_4_1week[eu$v3_5_1 == "Více"])
+
+#Samostudium
+subset(eu, !is.na(v3_5_2) & !is.na(v3_4_2week)) %>%
+  group_by(v3_5_2) %>%
+  summarise(round(mean(v3_4_2week, na.rm = T), digits = 1),
+            round(median(v3_4_2week, na.rm = T), digits = 1),
+            n=n())
+
+model2 <- aov(v3_4_2week ~ v3_5_2, data = eu)
+summary(model2)
+eta_squared(model2, partial = TRUE)
+
+cohens_d(eu$v3_4_2week[eu$v3_5_2 == "Méně"], eu$v3_4_2week[eu$v3_5_2 == "Stejně"])
+cohens_d(eu$v3_4_2week[eu$v3_5_2 == "Stejně"], eu$v3_4_2week[eu$v3_5_2 == "Více"])
+
+#Práce
+subset(eu, !is.na(v3_5_3) & !is.na(v4_6)) %>%
+  group_by(v3_5_3) %>%
+  summarise(round(mean(v4_6, na.rm = T), digits = 1),
+            round(median(v4_6, na.rm = T), digits = 1),
+            n=n())
+
+model3 <- aov(v4_6 ~ v3_5_3, data = eu)
+summary(model3)
+eta_squared(model3, partial = TRUE)
+
+cohens_d(eu$v4_6[eu$v3_5_3 == "Méně"], eu$v4_6[eu$v3_5_3 == "Stejně"])
+cohens_d(eu$v4_6[eu$v3_5_3 == "Stejně"], eu$v4_6[eu$v3_5_3 == "Více"])
+
+# H2: Vyšší intenzita práce vede k významným negativním dopadům na studium =========================================================
+
+df <- eu %>% filter(!is.na(.$v3_8), !is.na(.$v4_6))
+df <- df %>% mutate(across(c(v3_4_1week, v3_4_2week, v4_6), ~replace(., . > 100, NA_real_)))
+df$v6_2 <- factor(df$v6_2, levels = c(1,2), labels = c("Ženy", "Muži"))
+
+h1 <- df %>%
+  ggplot(aes(x = v3_8, y = v4_6)) +
+  geom_violin(draw_quantiles = 0.5)+ xlab("Studijní výkon") + ylab("Hodiny") +
+  scale_y_continuous(limits = c(0, 120), breaks = c(seq(0, upper_limit, 20))) +
+  theme_minimal() +
+  theme(text = element_text(colour = "black", size = fontsize),
+        axis.text.x = element_text(size = fontsize, colour = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),) +
+  stat_summary(fun = "mean", geom = "point", position = position_dodge2(width = 1)) +
+  stat_summary(fun.data = get_box_stats, geom = "text", hjust = 1, vjust = 0.9, size = fontsize_div)
+
+ragg::agg_png(paste0("./outputs/spokojenost_hodiny_pohl_", spokojenost_list[i], ".png"), width = page_width, height = 8, units = "cm", res = 300)
+print(h1)
+dev.off()
+
+modelH2 <- aov(v4_6 ~ v3_8, data = df)
+summary(modelH2)
+eta_squared(modelH2, partial = TRUE)
+
+```
+
+```{r analyza2, include=FALSE, echo=TRUE, eval=TRUE}
+
+# Cas straveny vyukou 
+dat <- as.data.frame(eu[c("hodinySkola", "v4_6", "deprivace")])
+dat$deprivace <- relevel(as.factor(dat$deprivace), ref = 1)
+
+m <- polr(factor(v3_5_1) ~ hodinySkola + CZv2_5_2, data = eu, Hess=TRUE)
+summary(m)
+confint(m)
+
+
+
+#---------------------
+wtd.table(eu$deprivace, eu$v3_8, weights = eu$weight)
+
+vykon <- as.data.frame(eu %>%
+                         group_by(deprivace, v3_8) %>%
+                         summarise(vaha = mean(weight),
+                                   n = n(),
+                                   wn = (n*vaha))%>%
+                              ungroup() %>%
+                              group_by(deprivace) %>%
+                              mutate(prop = prop.table(wn)))
+
+wtd.mean(as.numeric(eu$v3_8[eu$deprivace == "Spokojenost se vším"]), na.rm = T, weights = eu$weight[eu$deprivace == "Spokojenost se vším"])
+wtd.mean(as.numeric(eu$v3_8[eu$deprivace == "Dílčí spokojenost"]), na.rm = T, weights = eu$weight[eu$deprivace == "Dílčí spokojenost"])
+wtd.mean(as.numeric(eu$v3_8[eu$deprivace == "Nespokojenost se vším"]), na.rm = T, weights = eu$weight[eu$deprivace == "Nespokojenost se vším"])
+
+vykon_mean <- as.data.frame(eu %>%
+                         group_by(deprivace) %>%
+                         summarise(prumer = wtd.mean(as.numeric(v3_8), weights = weight)))
+
+plotVykon <- ggplot(vykon, aes(x = deprivace, y = prop, fill = v3_8)) +
+  geom_bar(position = "fill", stat="identity", width = 0.7) + xlab("") + ylab("") +
+  geom_shadowtext(aes(label = ifelse(prop > 0.016, format(round(prop*100, 0), nsmall = 0), ""), family = "serif", fontface = "bold"),
+            color = "black", size = 3.2, position = position_stack(vjust = 0.5), bg.colour = "white") +
+  theme_minimal() + scale_y_continuous(labels = function(x) paste0(x*100, " %"), breaks = seq(0, 1, 0.1)) + 
+  theme(text = element_text(colour = "black"), plot.title = element_text(hjust = 0, vjust = 7, size = 10, face = "bold"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major = element_line(colour = "grey"),
+        axis.text.x = element_text(hjust = 0.5, color = "black", vjust = 0, angle = 0),
+        plot.margin = unit(c(0.5,0,0,0), "cm"), 
+        axis.ticks = element_blank(), 
+        legend.title = element_blank(), legend.key.size = unit(0.4, "cm"),
+        legend.direction = "vertical", legend.position = "right", 
+        strip.text.x = element_text(angle = 0, hjust = 0)) +
+  scale_x_discrete(labels = c("Spokojenost\nse vším", "Dílčí\nspokojenost", "Nespokojenost\nse vším")) +
+  scale_fill_ordinal(direction = -1, option = "E") + guides(fill = guide_legend(reverse = F)) +
+  annotate(geom = "label",x = 12, y = 0.66, label = "Cohenovo h", family = "serif", size = 3.6)
+
+
+
+
+```
+
+```{r export, include=FALSE, echo=TRUE, eval=TRUE}
+# Export grafu do xlsx
+
+plotVykonExp <- rvg::dml(ggobj = plotVykon)
+
+doc <- 0
+doc <- officer::read_xlsx()
+doc <- add_sheet(x = doc, label = "Graf 1")
+doc <- add_sheet(x = doc, label = "Graf 2")
+
+doc <- xl_add_vg(doc, sheet = "Graf 1", code = print(plotVykonExp), 
+                 width = 6, height = 4.5, left = 1, top = 2 )
+#doc <- xl_add_vg(doc, sheet = "Graf 2", code = print(eH2err), 
+#                 width = 6, height = 2.5, left = 1, top = 2 )
+
+print(doc, target = "./outputs/Time_management_grafy.xlsx")
+```
